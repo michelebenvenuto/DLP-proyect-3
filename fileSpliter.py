@@ -22,6 +22,7 @@ class fileSpliter():
         file2 = open('TempFiles/token_specifications.ATG','w')
         file2.write(token_specifications)
         file2.close()
+        
 if __name__ =='__main__':
     file = input("Archivo con las definiciones ->")
     spliter = fileSpliter(file)
