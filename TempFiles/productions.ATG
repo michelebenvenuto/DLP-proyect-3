@@ -2,28 +2,28 @@ PRODUCTIONS
 
 Expr= {Stat ";"}".".
 
-Stat = 							(.int value;.)
-	Expression< ref value>		(.System.Console.WriteLn(value.ToString());.)
+Stat = 							(.value=0.)
+	Expression<value>		(.print(value).)
 	.
 
-Expression<ref int result> =		(.int result1,result2;.)
-	Term< ref result1>
-	{    "+"Term< ref result2>		(.result1+=result2;.)
-	   | "-"Term< ref result2>		(.result1-=result2;.)
-	}							(.result=result1;.)
+Expression<result> =		(.result1,result2 = 0, 0.)
+	Term<result1>
+	{    "+"Term<result2>		(.result1+=result2.)
+	   | "-"Term<result2>		(.result1-=result2.)
+	}							(.result=result1.)
 	.
 
-Term<ref int result>=				(.int result1,result2;.)
-	Factor<ref result1>
-	{    "*"Factor<ref result2>	(.result1*=result2;.)
-	   | "/"Factor<ref result2>	(.result1/=result2;.)
-	}							(.result=result1;.)
+Term<result>=				(.result1,result2 = 0.)
+	Factor<result1>
+	{    "*"Factor<result2>	(.result1*=result2.)
+	   | "/"Factor<result2>	(.result1/=result2.)
+	}							(.result=result1.)
 	.
 	
-Factor<ref int result> =	(.int signo=1;.)
-	["-"(.signo = -1;.)]
-	( Number<ref result> | "("Expression< ref result>")") (.result*=signo;.).
+Factor<result> =	(.signo=1.)
+	["-"(.signo = -1.)]
+	( Number<result> | "("Expression<result>")") (.result*=signo.).
 	
-Number<ref int result> =  number (. result = int.Parse(lastToken.Value).).
+Number<result> =  number (.result = int(lastToken.value).).
 
 END Aritmetica

@@ -12,7 +12,7 @@ file = open(file_path, 'r')
 file_content = file.read()
 file.close()
 
-filename = input("Ingrese el archivo generado por el programa Parser->")
+filename = input("Ingrese el archivo generado por el programa DFAGenerator->")
 infile = open(filename, 'rb')
 parser = pickle.load(infile)
 infile.close()

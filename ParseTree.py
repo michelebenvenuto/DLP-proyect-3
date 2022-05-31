@@ -1,5 +1,7 @@
 import pickle
 from utils import token
+import sys
+
 class Node():
     def __init__(self, name, type, childs = [], leftChild = None, rightChild = None, params = None):
         self.name = name
@@ -8,7 +10,7 @@ class Node():
         self.leftChild = leftChild
         self.rightChild = rightChild
         self.params = params
-        self.first_pos = set()
+        self.first = set()
         self.nullable = False
     
     def setLeftChild(self, child):
@@ -20,8 +22,20 @@ class Node():
     def setParams(self,params):
         self.params = params
 
-    def setFirstPos(self, pos):
-        self.first_pos = pos
+    def setFirst(self, pos):
+        self.first = pos
+
+    def setNullable(self):
+        if self.type in ['ident', 'string']:
+            self.nullable = False
+        elif self.type == 'operadores':
+            if self.name in '{[':
+                self.nullable = True
+            elif self.name == "|":
+                self.nullable = self.childs[0].nullable or self.childs[1].nullable
+            elif self.name == ".":
+                self.nullable = self.childs[0].nullable and self.childs[1].nullable
+
 
     def __str__(self):
         return "Name: {name} type: {type}".format(name=self.name, type=self.type, childs=self.childs, leftChild=self.leftChild, rightChild=self.rightChild, params=self.params)
@@ -146,33 +160,38 @@ class ParseTree():
                 nodes.append(production[i])
             
             elif production[i].type == "operadores" and production[i].name in ']})':
+                rightChild = production[i].rightChild
                 while len(ops) !=0 and ops[-1].name not in "({[":
                     op = ops.pop()
                     node2 = nodes.pop()
                     node1 = nodes.pop()
-                    nodes.append(Node(op.name, op.type, [node1,node2]))
+                    nodes.append(Node(op.name, op.type, [node1,node2],op.leftChild, op.rightChild, op.params))
                 
                 final_op = ops.pop()
                 if final_op.name in "[{":
                     node = nodes.pop()
-                    nodes.append(Node(final_op.name, final_op.type, [node]))
+                    nodes.append(Node(final_op.name, final_op.type, [node], final_op.leftChild, rightChild, final_op.params))
+                else:
+                    node = nodes.pop()
+                    node.setRightChild(rightChild)
+                    nodes.append(node)
             else:
                 while len(ops) != 0 and self.precedence(ops[-1].name) >= self.precedence(production[i].name):
                     op = ops.pop()
                     node2 = nodes.pop()
                     node1 = nodes.pop()
-                    nodes.append(Node(op.name,op.type, [node1, node2]))
+                    nodes.append(Node(op.name,op.type, [node1, node2], op.leftChild, op.rightChild, op.params))
                 ops.append(production[i])
             i += 1
         while len(ops) != 0:
             op = ops.pop()
             node2 = nodes.pop()
             node1 = nodes.pop()
-            nodes.append(Node(op.name, op.type,[node1,node2]))
+            nodes.append(Node(op.name, op.type,[node1,node2], op.leftChild, op.rightChild, op.params))
 
         node2 = nodes.pop()
         node1 = production[0]
-        root = Node(node1.name, node1.type, [node2])
+        root = Node(node1.name, node1.type, [node2], node1.leftChild, node1.rightChild, node1.params)
         return root
 
 class ParseForest():
@@ -183,7 +202,9 @@ class ParseForest():
         
         self.plantForest()
         self.get_nonterminals()
-
+        self.calculate_nullable()
+        self.calculate_first()
+        
         print(self.forest)
         print(self.noneterminals)
         for i in self.forest:
@@ -204,12 +225,67 @@ class ParseForest():
         for tree in self.forest:
             self.noneterminals.append(tree.name)
     
+    def get_tree_root_by_name(self, name):
+        for tree in self.forest:
+            if tree.name == name:
+                return tree
+        return 0
+    
+    def post_order(self,root, res=[]):
+        if root:
+            for child in root.childs:
+                self.post_order(child, res)
+                res.append(child)
+        return res
+    
+    def calculate_nullable(self):
+        for root in reversed(self.forest):
+            post_order = self.post_order(root)
+            for node in post_order:
+                node.setNullable()
+
+    def calculate_first(self):
+        for root in reversed(self.forest):
+            post_order = self.post_order(root)
+            for node in post_order:
+                if node.name not in self.noneterminals and len(node.childs) == 0:
+                    node.setFirst(set([node.name]))
+                elif node.name in self.noneterminals:
+                    if node != root:
+                        first = self.get_tree_root_by_name(node.name).first
+                        node.setFirst(first)
+                else:
+                    if node.name == '|':
+                        child1 = node.childs[0]
+                        child2 = node.childs[1]
+                        node.setFirst(child1.first | child2.first)
+                    elif node.name == '.':
+                        child1 = node.childs[0]
+                        child2 = node.childs[1]
+                        if child1.nullable:
+                            node.setFirst(child1.first | child2.first)
+                        else:
+                            node.setFirst(child1.first)
+                    elif node.name in '{[':
+                        child = node.childs[0]
+                        node.setFirst(child.first)
+            root.first = root.childs[0].first
+
 
 def display_tree(root ,i = 0):
     if i == 0:
-        print(root)
+        print(root, root.first, root.rightChild)
     for node in root.childs:
-        print(" "*(i+2)+ str(node))
+        print(" "*(i+2)+ str(node), node.first, node.rightChild)
         display_tree(node, i + 2)
 
-forest = ParseForest('tokens')
+if __name__ == '__main__':
+    filename = input("Ingrese el archivo con las tokens de las producciones ->")
+    parseForest = ParseForest(filename)
+    sys.setrecursionlimit(5000)       
+    out_file_name = 'parseForest'
+    outfile = open(out_file_name, 'wb')
+    pickle.dump(parseForest.forest, outfile)
+    outfile.close()
+    print(f'Los arboles de parseo se encuentra en el archivo {out_file_name}')
+
