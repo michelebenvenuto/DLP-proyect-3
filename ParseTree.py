@@ -43,6 +43,7 @@ class Node():
 class ProductionCleaner():
     def __init__(self, productions):
         self.productions = productions 
+        self.newTokens = []
         self.cleanedProductions = self.cleanProductions()
         self.nodesFromCleanedProductions()
         self.addConncatNodes()
@@ -97,17 +98,19 @@ class ProductionCleaner():
     #Main use is to remove the params and sintaxis tokens
     def crateNodesFromTokenArray(self, array):
         result = []
-        for token in array:
-            if token.token_name == "sintaxis":
+        for tokenA in array:
+            if tokenA.token_name == "sintaxis":
                 nodeToAdd = result.pop()
-                nodeToAdd.setRightChild(token.value)
+                nodeToAdd.setRightChild(tokenA.value)
                 result.append(nodeToAdd)
-            elif token.token_name == "parameters":
+            elif tokenA.token_name == "parameters":
                 nodeToAdd = result.pop()
-                nodeToAdd.setParams(token.value)
+                nodeToAdd.setParams(tokenA.value)
                 result.append(nodeToAdd)
             else:
-                result.append(Node(token.value, token.token_name))
+                if tokenA.token_name == 'string' and tokenA.value not in self.newTokens:
+                    self.newTokens.append(ord(tokenA.value.replace('"','')))
+                result.append(Node(tokenA.value, tokenA.token_name))
         return result
     
     def nodesFromCleanedProductions(self):
@@ -204,18 +207,17 @@ class ParseForest():
         self.get_nonterminals()
         self.calculate_nullable()
         self.calculate_first()
-        
-        print(self.forest)
-        print(self.noneterminals)
+
         for i in self.forest:
             display_tree(i)
 
     def plantForest(self):
         file = open(self.file, 'rb')
         tokens = pickle.load(file)
+        print(tokens)
         file.close()
         cleaner = ProductionCleaner(tokens)
-
+        self.newTokens = cleaner.newTokens
         for key in cleaner.cleanedProductions.keys():
             tree = ParseTree(cleaner.cleanedProductions[key])
             parse_tree = tree.buildTree()
@@ -274,13 +276,13 @@ class ParseForest():
 
 def display_tree(root ,i = 0):
     if i == 0:
-        print(root, root.first, root.rightChild)
+        print(root, root.first)
     for node in root.childs:
-        print(" "*(i+2)+ str(node), node.first, node.rightChild)
+        print(" "*(i+2)+ str(node), node.first)
         display_tree(node, i + 2)
 
 if __name__ == '__main__':
-    filename = input("Ingrese el archivo con las tokens de las producciones ->")
+    filename = "tokens_productions"
     parseForest = ParseForest(filename)
     sys.setrecursionlimit(5000)       
     out_file_name = 'parseForest'
@@ -288,4 +290,17 @@ if __name__ == '__main__':
     pickle.dump(parseForest.forest, outfile)
     outfile.close()
     print(f'Los arboles de parseo se encuentra en el archivo {out_file_name}')
-
+    if len(parseForest.newTokens) > 0:
+        print("Identificamos nuevas tokens agregandolas a las existentes")
+        file = open("tokens",'rb')
+        tokens = pickle.load(file)
+        file.close()
+        counter = 0
+        for i in parseForest.newTokens:
+            tokens.append(token("ident"+str(counter), [i]))
+            counter += 1 
+        file = open('tokens','wb')
+        pickle.dump(tokens, file)
+        outfile.close()
+        print("Las nuevas tokens se agregaron exitosamente")
+        

@@ -1,0 +1,51 @@
+COMPILER Double    
+
+CHARACTERS 
+
+digit = "0123456789".
+tab = CHR(9).
+eol = CHR(10).
+blanco = eol+CHR(13)+tab.
+
+TOKENS
+
+number = digit{digit}.
+decnumber = digit{digit}"."digit{digit}.
+white = blanco{blanco}.
+
+PRODUCTIONS
+
+Expr= {Stat ";"{white}}{white}".".
+
+Stat = 							(.value=0.)
+	Expression<value>		(.print(value).)
+	.
+
+Expression<result> =			(.result1,result2=0,0.)
+	Term<result1>
+	{    "+"Term<result2>		(.result1+=result2.)
+	   | "-"Term<result2>		(.result1-=result2.)
+	}								(.result=result1.)
+	.
+
+Term<result>=				(.result1, result2= 0, 0.)
+	Factor<result1>
+	{    "*"Factor<result2>	(.result1*=result2.)
+	   | "/"Factor<result2>	(.result1/=result2.)
+	}							(.result=result1.)
+	.
+
+
+Factor<result> =		(.sign=1.0.)
+	["-"						(.sign = -1.0.)
+	]
+	(Number<result>
+	 |"("Expression<result>")"
+	)							(.result*=sign.)
+	.
+
+Number<result> =	
+	(number				
+	|decnumber)(.result = float(lastToken.value).)
+	.
+END Double

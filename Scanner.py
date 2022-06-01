@@ -17,9 +17,7 @@ class Scanner():
         self.tokens_tokenized = {}
         self.character_definitions_tokenized = {}
         self.tokenizer = Tokenizer(cocol_definitions)
-        self.extractFileContent()
-        self.create_temp_file()
-        self.read_clean_file()
+        self.read_clean_file(file_path)
         self.clean_file_lines()
         self.get_next_line()
         self.read_file_content()
@@ -31,17 +29,8 @@ class Scanner():
         self.build_tokens_from_regex()
     
     #Save file content in the buffer self.file_content
-    def extractFileContent(self):
-        file = open(self.file_path, 'r')
-        self.file_content = file.read()
-        file.close()
-             
-    def create_temp_file(self):
-        file = open("temp.ATG","w")
-        file.write(self.file_content)
-        file.close()
 
-    def read_clean_file(self,path = "temp.ATG"):
+    def read_clean_file(self,path):
         lines = []
         for line in open(path, 'r').readlines():
             if line == '\n':
